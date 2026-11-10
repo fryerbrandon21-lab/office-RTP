@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Office RTP Basketball</title>
+<style>
+:root{color-scheme:dark;--bg:#101510;--panel:#191f19;--panel2:#202820;--line:#303a30;--text:#f2f5ed;--muted:#a0ad9c;--green:#b9f36a;--orange:#ffc477;--red:#ff938b}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:var(--text);background:radial-gradient(ellipse at 85% 0%,#283723 0%,transparent 34%),var(--bg);font:15px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.wrap{width:min(1100px,calc(100% - 32px));margin:auto;padding:40px 0 56px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:26px}
+.eyebrow{color:var(--green);text-transform:uppercase;letter-spacing:.14em;font-size:11px;font-weight:800}
+h1{font-size:clamp(32px,5vw,48px);line-height:1;margin:8px 0 10px;letter-spacing:-.04em}
+.sub{color:var(--muted);margin:0}
+.badge{background:#293421;color:var(--green);border:1px solid #45553a;border-radius:999px;padding:8px 12px;font-size:12px;white-space:nowrap}
+.grid{display:grid;grid-template-columns:minmax(280px,.85fr) minmax(0,1.5fr);gap:18px;align-items:start}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 14px 35px #0002}
+.card-head{padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+h2{margin:0;font-size:18px;letter-spacing:-.02em}
+.hint{color:var(--muted);font-size:12px;margin:5px 0 0}
+.form{padding:20px;display:grid;gap:14px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;color:var(--muted);font-size:12px;font-weight:700;margin-bottom:6px}
+select{appearance:none;width:100%;border:1px solid #3b4739;border-radius:10px;background-color:var(--panel2);color:var(--text);padding:12px 36px 12px 12px;font:inherit;outline:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='m1 1 5 5 5-5' fill='none' stroke='%23a0ad9c' stroke-width='2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center}
+select:focus{border-color:var(--green);box-shadow:0 0 0 3px #b9f36a20}
+button{font:inherit;cursor:pointer;border:0}
+.primary{background:var(--green);color:#17200f;font-weight:850;border-radius:10px;padding:13px 16px}
+.primary:hover{filter:brightness(1.06)}
+.score-title{margin:1px 0 -8px;font-weight:800;font-size:13px}
+.score-help{margin:-9px 0 0;color:var(--muted);font-size:11px}
+.error{display:none;color:var(--red);font-size:12px;margin:-5px 0 0}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;text-align:left}
+th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:800;padding:12px 14px}
+td{border-top:1px solid #293129;padding:12px 14px;white-space:nowrap}
+tbody tr:first-child td{border-top:0}
+tbody tr:hover{background:#ffffff05}
+.rank{color:var(--muted);width:45px}
+.player{font-weight:750}
+.record{color:var(--muted)}
+.pct,.sos{font-variant-numeric:tabular-nums}
+.sos{color:var(--orange)}
+.top .rank,.top .player{color:var(--green)}
+.empty{padding:26px 20px;color:var(--muted);text-align:center}
+.section{margin-top:18px}
+.section .card-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.quiet-button{background:transparent;color:var(--muted);font-size:12px;padding:6px 8px;border-radius:7px}
+.quiet-button:hover{color:var(--red);background:#ff938b12}
+.recent-row{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:12px 20px;border-top:1px solid #293129}
+.match-result{font-weight:700}
+.match-result .won{color:var(--green)}
+.match-score{color:var(--orange);font-size:12px;white-space:nowrap}
+.match-date{color:var(--muted);font-size:11px}
+.delete{color:var(--muted);background:transparent;border-radius:6px;padding:5px 8px}
+.delete:hover{color:var(--red);background:#ff938b12}
+.foot{color:var(--muted);font-size:12px;margin:12px 2px 0}
+@media(max-width:760px){.wrap{padding-top:28px}header{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}.badge{white-space:normal}}
+@media(max-width:430px){.pair{grid-template-columns:1fr}th,td{padding:11px 10px}.recent-row{padding:12px;grid-template-columns:1fr auto}.match-date{display:none}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<header><div><div class="eyebrow">Office league · Season tracker</div><h1>Basketball rankings</h1><p class="sub">Log the matchup and RTP score to update the leaderboard.</p></div><div class="badge" id="gameBadge">0 matchups recorded</div></header>
+<div class="grid">
+<section class="card">
+<div class="card-head"><h2>Record a matchup</h2><p class="hint">Choose the players, enter their RTP letters, and select the winner.</p></div>
+<form class="form" id="matchForm">
+<div class="pair"><div><label for="playerA">Player 1</label><select id="playerA"></select></div><div><label for="playerB">Player 2</label><select id="playerB"></select></div></div>
+<p class="score-title">RTP score</p>
+<div class="pair"><div><label id="scoreALabel" for="scoreA">Cam’s letters</label><select id="scoreA"></select></div><div><label id="scoreBLabel" for="scoreB">Brandon’s letters</label><select id="scoreB"></select></div></div>
+<p class="score-help">0 = none · 1 = R · 2 = RT · 3 = RTP. The player who gets RTP loses.</p>
+<div><label for="winner">Winner</label><select id="winner"></select></div>
+<p class="error" id="formError">The winner must have fewer than 3 letters, and the losing player must have RTP.</p>
+<button class="primary" type="submit">＋ Add matchup</button>
+</form>
+</section>
+<section class="card">
+<div class="card-head"><h2>Live leaderboard</h2><p class="hint">Ranked by win percentage, then strength of schedule.</p></div>
+<div class="table-wrap"><table><thead><tr><th>#</th><th>Player</th><th>W–L</th><th>Win %</th><th>SOS</th></tr></thead><tbody id="leaderboard"></tbody></table></div>
+<p class="foot" style="padding:0 20px 16px;margin-top:4px">SOS is the average current win percentage of each player’s opponents.</p>
+</section>
+</div>
+<section class="card section">
+<div class="card-head"><div><h2>Recent matchups</h2><p class="hint">Remove a result to correct the leaderboard.</p></div><button class="quiet-button" id="resetButton" type="button">Reset season</button></div>
+<div id="matchList"></div>
+</section>
+<p class="foot">Results are saved in this browser. Starting order: Cam, Brandon, Alan, Andrew, George, Alex, Jacob.</p>
+</main>
+<script>
+(function(){
+var players=["Cam","Brandon","Alan","Andrew","George","Alex","Jacob"],letters=["—","R","RT","RTP"],key="office-basketball-v1",games=[];
+try{var saved=JSON.parse(localStorage.getItem(key)||"[]");if(Array.isArray(saved))games=saved.filter(function(g){return players.indexOf(g.a)>=0&&players.indexOf(g.b)>=0&&players.indexOf(g.winner)>=0&&g.a!==g.b&&(g.winner===g.a||g.winner===g.b)})}catch(e){games=[]}
+function $(id){return document.getElementById(id)}
+var a=$("playerA"),b=$("playerB"),sa=$("scoreA"),sb=$("scoreB"),w=$("winner");
+function fillPlayers(el){el.innerHTML=players.map(function(p){return '<option value="'+p+'">'+p+'</option>'}).join("")}
+function fillScores(el){el.innerHTML=letters.map(function(x,i){return '<option value="'+i+'">'+i+' · '+x+'</option>'}).join("")}
+fillPlayers(a);fillPlayers(b);fillScores(sa);fillScores(sb);a.value="Cam";b.value="Brandon";sa.value="0";sb.value="3";
+function sync(){if(a.value===b.value)b.value=players.filter(function(p){return p!==a.value})[0];$("scoreALabel").textContent=a.value+'’s letters';$("scoreBLabel").textContent=b.value+'’s letters';var prior=w.value,aa=a.value,bb=b.value;w.innerHTML='<option value="'+aa+'">'+aa+'</option><option value="'+bb+'">'+bb+'</option>';w.value=prior===aa||prior===bb?prior:aa}
+function standings(){var st={};players.forEach(function(p,i){st[p]={name:p,seed:i,w:0,l:0,opp:[]}});games.forEach(function(g){var loser=g.winner===g.a?g.b:g.a;st[g.winner].w++;st[loser].l++;st[g.a].opp.push(g.b);st[g.b].opp.push(g.a)});return Object.keys(st).map(function(k){var s=st[k],n=s.w+s.l;s.pct=n?s.w/n:null;s.sos=s.opp.length?s.opp.reduce(function(sum,p){var o=st[p],on=o.w+o.l;return sum+(on?o.w/on:0)},0)/s.opp.length:0;return s}).sort(function(x,y){if(x.pct===null&&y.pct!==null)return 1;if(y.pct===null&&x.pct!==null)return-1;if(x.pct!==y.pct)return(y.pct||0)-(x.pct||0);if(x.sos!==y.sos)return y.sos-x.sos;return x.seed-y.seed})}
+function render(){localStorage.setItem(key,JSON.stringify(games));$("leaderboard").innerHTML=standings().map(function(s,i){return '<tr class="'+(i===0&&games.length?"top":"")+'"><td class="rank">'+String(i+1).padStart(2,"0")+'</td><td class="player">'+s.name+'</td><td class="record">'+s.w+'–'+s.l+'</td><td class="pct">'+(s.pct===null?"—":s.pct.toFixed(3).replace(/^0/,""))+'</td><td class="sos">'+s.sos.toFixed(3).replace(/^0/,"")+'</td></tr>'}).join("");$("gameBadge").textContent=games.length+" "+(games.length===1?"matchup":"matchups")+" recorded";if(!games.length){$("matchList").innerHTML='<div class="empty">No matchups yet. Add the first result above to get started.</div>';return}$("matchList").innerHTML=games.slice().reverse().map(function(g){var loser=g.winner===g.a?g.b:g.a,score=Number.isInteger(g.scoreA)&&Number.isInteger(g.scoreB)?g.a+" "+letters[g.scoreA]+" · "+g.b+" "+letters[g.scoreB]:"Score not recorded";return '<div class="recent-row"><div class="match-result"><span class="won">'+g.winner+'</span> beat '+loser+'<div class="match-score">'+score+'</div></div><div class="match-date">'+(g.date||"")+'</div><button class="delete" type="button" data-delete="'+g.id+'">Remove</button></div>'}).join("")}
+a.addEventListener("change",sync);b.addEventListener("change",sync);
+$("matchForm").addEventListener("submit",function(e){e.preventDefault();var aa=a.value,bb=b.value,win=w.value,as=Number(sa.value),bs=Number(sb.value),loserScore=win===aa?bs:as,winnerScore=win===aa?as:bs;if(winnerScore>=3||loserScore!==3){$("formError").style.display="block";return}$("formError").style.display="none";games.push({id:String(Date.now()),a:aa,b:bb,winner:win,scoreA:as,scoreB:bs,date:new Date().toLocaleDateString()});render();sync()});
+$("matchList").addEventListener("click",function(e){var btn=e.target.closest("[data-delete]");if(!btn)return;games=games.filter(function(g){return String(g.id)!==btn.dataset.delete});render()});
+$("resetButton").addEventListener("click",function(){if(!games.length||confirm("Clear all matchup results and reset the season?")){games=[];render()}});
+sync();render()
+})();
+</script>
+</body>
+</html>
