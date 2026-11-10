@@ -14,6 +14,18 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;
 h1{font-size:clamp(32px,5vw,48px);line-height:1;margin:8px 0 10px;letter-spacing:-.04em}
 .sub{color:var(--muted);margin:0}
 .badge{background:#293421;color:var(--green);border:1px solid #45553a;border-radius:999px;padding:8px 12px;font-size:12px;white-space:nowrap}
+.header-actions{display:flex;align-items:center;gap:10px}
+.lock-button{background:#293421;color:var(--text);border:1px solid #45553a;border-radius:10px;padding:9px 13px;font-weight:750}
+.lock-button:hover{border-color:var(--green);color:var(--green)}
+.auth-screen{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at 85% 0%,#283723 0%,transparent 42%),#101510}
+.auth-screen.hidden{display:none}
+.auth-card{width:min(420px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px;box-shadow:0 20px 60px #0008}
+.auth-card h2{font-size:24px;margin:8px 0}
+.auth-card p{color:var(--muted);font-size:13px;margin:8px 0 18px}
+.auth-card input{width:100%;border:1px solid #3b4739;border-radius:10px;background:var(--panel2);color:var(--text);padding:12px;font:inherit;outline:none;margin:0 0 14px}
+.auth-card input:focus{border-color:var(--green);box-shadow:0 0 0 3px #b9f36a20}
+.auth-error{display:none;color:var(--red)!important;margin:-4px 0 12px!important}
+.auth-error.visible{display:block}
 .grid{display:grid;grid-template-columns:minmax(280px,.85fr) minmax(0,1.5fr);gap:18px;align-items:start}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 14px 35px #0002}
 .card-head{padding:18px 20px 14px;border-bottom:1px solid var(--line)}
@@ -60,8 +72,24 @@ tbody tr:hover{background:#ffffff05}
 </style>
 </head>
 <body>
+<div class="auth-screen" id="authScreen">
+<form class="auth-card" id="authForm">
+<div class="eyebrow">Office RTP · Browser lock</div>
+<h2 id="authTitle">Unlock the app</h2>
+<p id="authHelp">Enter your passcode to continue.</p>
+<label for="authPassword">Password</label>
+<input id="authPassword" type="password" autocomplete="current-password" required>
+<div id="confirmWrap" hidden>
+<label for="authConfirm">Confirm password</label>
+<input id="authConfirm" type="password" autocomplete="new-password">
+</div>
+<p class="auth-error" id="authError" role="alert"></p>
+<button class="primary" id="authSubmit" type="submit">Unlock</button>
+<p>This is a convenience lock for this browser. The public app code can still be inspected or bypassed.</p>
+</form>
+</div>
 <main class="wrap">
-<header><div><div class="eyebrow">Office league · Season tracker</div><h1>Basketball rankings</h1><p class="sub">Record matchups and RTP scores to update the rankings.</p></div><div class="badge" id="gameBadge">0 matchups recorded</div></header>
+<header><div><div class="eyebrow">Office league · Season tracker</div><h1>Basketball rankings</h1><p class="sub">Record matchups and RTP scores to update the rankings.</p></div><div class="header-actions"><div class="badge" id="gameBadge">0 matchups recorded</div><button class="lock-button" id="lockButton" type="button" hidden>Lock app</button></div></header>
 <div class="grid">
 <section class="card">
 <div class="card-head"><h2>Record a matchup</h2><p class="hint">Choose the players, enter their RTP letters, and select the winner.</p></div>
@@ -92,6 +120,49 @@ tbody tr:hover{background:#ffffff05}
 var players=["Cam","Brandon","Alan","Andrew","George","Alex","Jacob"],letters=["—","R","RT","RTP"],key="office-basketball-v1",games=[];
 try{var saved=JSON.parse(localStorage.getItem(key)||"[]");if(Array.isArray(saved))games=saved.filter(function(g){return players.indexOf(g.a)>=0&&players.indexOf(g.b)>=0&&players.indexOf(g.winner)>=0&&g.a!==g.b&&(g.winner===g.a||g.winner===g.b)})}catch(e){games=[]}
 function $(id){return document.getElementById(id)}
+var authSaltKey="office-rtp-lock-salt-v1",authHashKey="office-rtp-lock-hash-v1";
+function bytesToHex(bytes){return Array.from(new Uint8Array(bytes)).map(function(b){return b.toString(16).padStart(2,"0")}).join("")}
+function hexToBytes(hex){var out=new Uint8Array(hex.length/2);for(var i=0;i<out.length;i++)out[i]=parseInt(hex.substr(i*2,2),16);return out}
+async function derivePasscode(passcode,salt){
+ var material=await crypto.subtle.importKey("raw",new TextEncoder().encode(passcode),"PBKDF2",false,["deriveBits"]);
+ return crypto.subtle.deriveBits({name:"PBKDF2",salt:salt,iterations:120000,hash:"SHA-256"},material,256)
+}
+function configureAuth(setup){
+ $("authTitle").textContent=setup?"Set a browser passcode":"Unlock the app";
+ $("authHelp").textContent=setup?"Create a passcode for this browser. You will need it whenever you return or lock the app.":"Enter your passcode to continue.";
+ $("authSubmit").textContent=setup?"Set passcode":"Unlock";
+ $("confirmWrap").hidden=!setup;
+ $("authPassword").autocomplete=setup?"new-password":"current-password";
+ $("authConfirm").required=setup;
+}
+function initLock(){
+ var configured=!!(localStorage.getItem(authSaltKey)&&localStorage.getItem(authHashKey));
+ configureAuth(!configured);
+ $("authForm").addEventListener("submit",async function(event){
+  event.preventDefault();
+  var pass=$("authPassword").value,error=$("authError");
+  error.textContent="";error.classList.remove("visible");
+  try{
+   if(!localStorage.getItem(authHashKey)){
+    if(pass.length<4){error.textContent="Choose a passcode with at least 4 characters.";error.classList.add("visible");return}
+    if(pass!==$("authConfirm").value){error.textContent="Those passwords do not match.";error.classList.add("visible");return}
+    var salt=crypto.getRandomValues(new Uint8Array(16)),hash=await derivePasscode(pass,salt);
+    localStorage.setItem(authSaltKey,bytesToHex(salt));localStorage.setItem(authHashKey,bytesToHex(hash));
+   }else{
+    var savedSalt=hexToBytes(localStorage.getItem(authSaltKey)),candidate=await derivePasscode(pass,savedSalt);
+    if(bytesToHex(candidate)!==localStorage.getItem(authHashKey)){error.textContent="That password doesn’t match. Try again.";error.classList.add("visible");$("authPassword").select();return}
+   }
+   $("authScreen").classList.add("hidden");$("lockButton").hidden=false;
+   $("authPassword").value="";$("authConfirm").value="";
+  }catch(e){error.textContent="The browser could not check the passcode. Reload and try again.";error.classList.add("visible")}
+ });
+ $("lockButton").addEventListener("click",function(){
+  $("authScreen").classList.remove("hidden");$("lockButton").hidden=true;
+  $("authPassword").value="";$("authConfirm").value="";
+  $("authError").textContent="";$("authError").classList.remove("visible");
+  configureAuth(false);$("authPassword").focus();
+ });
+}
 var a=$("playerA"),b=$("playerB"),sa=$("scoreA"),sb=$("scoreB"),w=$("winner");
 function fillPlayers(el){el.innerHTML=players.map(function(p){return '<option value="'+p+'">'+p+'</option>'}).join("")}
 function fillScores(el){el.innerHTML=letters.map(function(x,i){return '<option value="'+i+'">'+i+' · '+x+'</option>'}).join("")}
@@ -166,7 +237,7 @@ $("matchForm").addEventListener("submit",function(e){
 });
 $("matchList").addEventListener("click",function(e){var btn=e.target.closest("[data-delete]");if(!btn)return;games=games.filter(function(g){return String(g.id)!==btn.dataset.delete});render()});
 $("resetButton").addEventListener("click",function(){if(!games.length||confirm("Clear all matchup results and reset the season?")){games=[];render()}});
-sync();render()
+sync();render();initLock()
 })();
 </script>
 </body>
